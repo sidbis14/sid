@@ -1,0 +1,101 @@
+#include "gate.h"
+
+gate::gate()
+{
+	num_pins = 0;
+}
+gate::~gate()
+{
+	for(std::vector<pin *>::iterator it = pins_.begin(); it != pins_.end(); it++)
+		delete *it;
+}
+
+void gate::set_name(std::string name)
+{
+	name_ = name;
+}
+void gate::set_type(std::string type)
+{
+	type_= type;
+}
+void gate::set_output(bool output)
+{
+	output_ = output;
+}
+bool gate::get_output()
+{
+	return output_;
+}
+bool gate::get_visited()
+{
+	return visited_;
+}
+void gate::set_visited(bool visited)
+{
+	visited_ = visited;
+}
+bool gate::get_state()
+{
+	return state_;
+}
+void gate::set_state(bool state)
+{
+	state_ = state;
+}
+void gate::set_next_state()
+{
+	state_ = next_state_;
+}
+
+void gate::evaluate()
+{
+	std::vector<bool> inputs;
+	if(type_ == "evl_dff")
+	{
+		net *out_net = pins_[0]->get_nets()[0];
+		out_net->set_valid_signal();
+		out_net->set_logic_value(state_);
+		//Ensure we dont find driver of clock
+		net *clk_net = pins_[2]->get_nets()[0];
+		clk_net->set_valid_signal();
+		clk_net->set_logic_value(true);
+		/*
+		if(state_ == true)
+			std::cout << 1;
+		else
+			std::cout << 0;
+		std::cout << std::endl;
+		*/
+	}
+	for(std::vector<pin *>::iterator pp = pins_.begin(); pp != pins_.end(); pp++)
+	{
+		std::vector<net *> pin_nets = (*pp)->get_nets();
+		if((*pp)->get_dir() == 'i')
+		{
+			for(std::vector<net *>::iterator np = pin_nets.begin(); np != pin_nets.end(); np++)
+			{
+				if(!((*np)->valid_signal()))
+				{
+					(*np)->get_driver()->evaluate();
+				}
+				//if((*np)->get_signal() == '?')
+				/*
+				   if((*np)->get_driver()->get_visited() == false)
+				   {
+				   (*np)->get_driver()->evaluate();
+				   }
+				   */
+				inputs.push_back((*np)->get_logic_value());
+			}
+		}
+	}
+	if(type_ == "evl_dff")
+	{
+		next_state_ = inputs[0];
+		state_ = next_state_;
+	}
+	else if(type_ != "evl_output")
+	{
+		bool output = compute_output(inputs);
+		set_out_nets(output);
+	}
